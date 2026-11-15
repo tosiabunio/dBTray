@@ -17,7 +17,7 @@ The meter closes when you click anywhere else or press Esc. Tab, Space and Enter
 
 ## Download and run
 
-dBTray is one small `dBTray.exe` (about 270 KB). It needs no installer and no runtime: put it in a folder you like and run it. It needs Windows 11; it should also run on Windows 10 (1903 or later), which hasn't been tested.
+Get `dBTray.exe` from the latest [release](https://github.com/tosiabunio/dBTray/releases/latest). It's one small file (about 270 KB) for x64 PCs that needs no installer and no runtime: put it in a folder you like and run it. It needs Windows 11; it should also run on Windows 10 (1903 or later), which hasn't been tested.
 
 - Windows 11 tucks new tray icons away behind the **^** arrow. Drag the dBTray icon onto the taskbar, or turn it on under Settings › Personalization › Taskbar › Other system tray icons. Until then, running `dBTray.exe` again opens the meter.
 - The options are saved in `dBTray.ini` next to the executable, so the folder is all there is to copy or delete. If that folder isn't writable (Program Files, say), they go to `%APPDATA%\dBTray\dBTray.ini` instead.
