@@ -1,0 +1,32 @@
+#include <winresrc.h>
+#include "resource.h"
+
+IDI_APP ICON "dBTray.ico"
+
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "dBTray.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 1, 0, 0, 0
+PRODUCTVERSION 1, 0, 0, 0
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "dBTray"
+            VALUE "FileVersion", "1.0.0"
+            VALUE "InternalName", "dBTray"
+            VALUE "LegalCopyright", "Copyright (c) 2026 Maciej Miasik. BSD Zero Clause License."
+            VALUE "OriginalFilename", "dBTray.exe"
+            VALUE "ProductName", "dBTray"
+            VALUE "ProductVersion", "1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04B0
+    END
+END
