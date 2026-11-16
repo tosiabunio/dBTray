@@ -13,8 +13,9 @@
 class App;
 
 // The meter flyout that opens from the tray icon: L/R peak meters, the optional loudness bars and
-// the options. It is drawn with Direct2D so it can follow the Windows 11 look in both themes, and
-// closes like a system flyout when it loses focus.
+// the options. It is drawn with Direct2D so it can follow the Windows 11 look in both themes. It
+// stays open on top of other windows until it is closed with its close button, Esc or the tray
+// icon.
 class MeterWindow {
 public:
     explicit MeterWindow(App& app);
@@ -24,7 +25,9 @@ public:
     bool Create(HINSTANCE instance, HWND owner);
     // Opens next to the tray icon; `icon` is its screen rectangle, or null if that's unknown.
     void Show(const RECT* icon);
-    void Hide() { HideWindow(false); }
+    void Hide();
+    // Moves the open flyout back next to the tray icon after the screen or taskbar changed.
+    void Reposition(const RECT* icon);
     bool IsVisible() const;
     HWND Handle() const { return hwnd_; }
     void Invalidate();
@@ -42,7 +45,7 @@ public:
     };
 
 private:
-    enum class Control { None, Meters, KeepMeasuring, Loudness, LaunchAtLogin, Quit, OpenSettings };
+    enum class Control { None, Close, Meters, KeepMeasuring, Loudness, LaunchAtLogin, Quit, OpenSettings };
 
     struct CachedFormat {
         float size;
@@ -58,7 +61,7 @@ private:
         std::wstring deviceName;  // truncated to fit the header
         float titleWidth = 0;
         std::wstring error;
-        D2D1_RECT_F header{}, errorRect{};
+        D2D1_RECT_F header{}, closeButton{}, errorRect{};
         D2D1_RECT_F shortTermRow{}, leftRow{}, rightRow{}, integratedRow{}, scaleRow{};
         D2D1_RECT_F caption{}, keepMeasuring{};
         float dividerY = 0;
@@ -77,7 +80,6 @@ private:
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     LRESULT HandleMessage(UINT message, WPARAM wParam, LPARAM lParam);
-    void HideWindow(bool deactivated);
 
     // Layout and placement.
     void Relayout();
@@ -112,6 +114,7 @@ private:
     void DrawScale(const D2D1_RECT_F& row);
     void DrawCheckbox(const D2D1_RECT_F& rect, const wchar_t* label, bool checked, Control control);
     void DrawButton(const D2D1_RECT_F& rect, const wchar_t* label, Control control);
+    void DrawCloseButton();
     void DrawFocusRing();
     void FillRect(const D2D1_RECT_F& rect, const D2D1_COLOR_F& color);
     void FillRoundedRect(const D2D1_RECT_F& rect, float radius, const D2D1_COLOR_F& color);
@@ -134,7 +137,6 @@ private:
     RECT iconRect_{};
     bool hasIcon_ = false;
     bool positioning_ = false;
-    bool hiding_ = false;
 
     Layout layout_;
     Control hover_ = Control::None;

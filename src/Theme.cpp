@@ -72,6 +72,8 @@ Palette MakePalette() {
         p.buttonFillHover = Rgb(0xFFFFFF, 0.0837f);
         p.buttonFillPressed = Rgb(0xFFFFFF, 0.0326f);
         p.buttonStroke = Rgb(0xFFFFFF, 0.093f);
+        p.subtleFillHover = Rgb(0xFFFFFF, 0.0605f);
+        p.subtleFillPressed = Rgb(0xFFFFFF, 0.0419f);
     } else {
         p.background = Rgb(0xF9F9F9);
         p.textPrimary = Rgb(0x000000, 0.8956f);
@@ -93,6 +95,8 @@ Palette MakePalette() {
         p.buttonFillHover = Rgb(0xF9F9F9, 0.5f);
         p.buttonFillPressed = Rgb(0xF9F9F9, 0.3f);
         p.buttonStroke = Rgb(0x000000, 0.1f);
+        p.subtleFillHover = Rgb(0x000000, 0.0373f);
+        p.subtleFillPressed = Rgb(0x000000, 0.0241f);
     }
     return p;
 }
