@@ -12,6 +12,7 @@ struct Palette {
     D2D1_COLOR_F accentFill, onAccent, accentText;
     D2D1_COLOR_F checkFill, checkFillHover, checkFillPressed, checkStroke;
     D2D1_COLOR_F buttonFill, buttonFillHover, buttonFillPressed, buttonStroke;
+    D2D1_COLOR_F subtleFillHover, subtleFillPressed;  // borderless buttons, like the close button
 };
 
 // "Windows mode" in Settings › Personalization › Colors: the theme of the taskbar and its flyouts.

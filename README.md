@@ -13,7 +13,7 @@ Click the dBTray icon (two rows of level segments) in the notification area to o
 - **Reset**: click any meter row to reset the peaks and clip indicators of both channels and start integrated loudness over.
 - **Launch at Login**: starts dBTray when you sign in. It uses the per-user `Run` registry key, so it appears under Settings › Apps › Startup. Turn it on from the copy of the app you'll keep using.
 
-The meter closes when you click anywhere else or press Esc. Tab, Space and Enter work the options; right-click the icon for *Open Meter* and *Quit dBTray*.
+The meter stays open on top of other windows while you work. Close it by clicking the dBTray icon again, with its **×** button, or with Esc. Tab, Space and Enter work the options; right-click the icon for *Open Meter* (*Close Meter* while it's open) and *Quit dBTray*.
 
 ## Download and run
 
@@ -51,6 +51,7 @@ The meter shows the digital signal apps send to the output device. It follows ea
 
 - dBar leaves per-app volume mixers that replay other apps' audio (FineTune) out of its tap. That is a macOS arrangement with no Windows equivalent, so dBTray has no such exclusion.
 - macOS shows a recording indicator while dBar measures in the background; Windows shows none, so dBTray's tooltip reports it.
+- dBar's popover closes when you click elsewhere. dBTray's meter stays on top until you close it, so it can stay in view while you use other apps.
 - dBTray adds a right-click menu on the icon, and opens the meter when started by hand.
 
 ## License

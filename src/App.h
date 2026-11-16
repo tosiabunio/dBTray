@@ -28,14 +28,15 @@ public:
     LaunchAtLogin& Login() { return launchAtLogin_; }
     const Palette& Colors() const { return palette_; }
 
-    // Called by the flyout after it closed; `deactivated` when a click elsewhere closed it.
-    void OnMeterHidden(bool deactivated);
+    // Called by the flyout after it closed.
+    void OnMeterHidden();
 
 private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     LRESULT HandleMessage(UINT message, WPARAM wParam, LPARAM lParam);
     void OnTrayEvent(UINT event, POINT position);
     void ShowMeter();
+    void RepositionMeter();
     void ShowMenu(POINT position);
     void RefreshTheme();
     void UpdateTrayTip();
@@ -50,8 +51,5 @@ private:
     MeterWindow meter_;
     Microsoft::WRL::ComPtr<IMMDeviceEnumerator> deviceEnumerator_;
     IMMNotificationClient* deviceNotifier_ = nullptr;
-    // Clicking the tray icon while the flyout is open closes it (the click takes the focus away)
-    // and then reports the click; these keep that click from opening it again.
-    ULONGLONG ignoreSelectUntil_ = 0;
     ULONGLONG shownAt_ = 0;
 };

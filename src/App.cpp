@@ -15,7 +15,7 @@ constexpr wchar_t kTip[] = L"dBTray output level";
 // Windows shows no indicator while an app listens to the output, so the icon says it.
 constexpr wchar_t kMeasuringTip[] = L"dBTray output level\nMeasuring loudness while closed";
 
-constexpr UINT kOpenMeterCommand = 1;
+constexpr UINT kToggleMeterCommand = 1;
 constexpr UINT kQuitCommand = 2;
 
 // Tells the app window when the default output device changes, so capture can move to it.
@@ -137,14 +137,12 @@ void App::ShowMeter() {
     UpdateTrayTip();
 }
 
-void App::OnMeterHidden(bool deactivated) {
-    if (deactivated) {
-        POINT cursor;
-        RECT icon;
-        if (GetCursorPos(&cursor) && tray_.GetRect(icon) && PtInRect(&icon, cursor)) {
-            ignoreSelectUntil_ = GetTickCount64() + 1000;
-        }
-    }
+void App::RepositionMeter() {
+    RECT icon;
+    meter_.Reposition(tray_.GetRect(icon) ? &icon : nullptr);
+}
+
+void App::OnMeterHidden() {
     if (settings_.KeepsMeasuringWhenClosed()) {
         model_.SetVisible(false);
     } else {
@@ -167,17 +165,14 @@ void App::RefreshTheme() {
 void App::OnTrayEvent(UINT event, POINT position) {
     switch (event) {
     case NIN_SELECT:
-    case NIN_KEYSELECT: {
-        const ULONGLONG now = GetTickCount64();
-        if (now < ignoreSelectUntil_) {
-            ignoreSelectUntil_ = 0;
-        } else if (!meter_.IsVisible()) {
+    case NIN_KEYSELECT:
+        // The icon opens and closes the meter; it stays open in between.
+        if (!meter_.IsVisible()) {
             ShowMeter();
-        } else if (now - shownAt_ > 300) {  // Enter reports NIN_KEYSELECT twice
+        } else if (GetTickCount64() - shownAt_ > 300) {  // Enter reports NIN_KEYSELECT twice
             meter_.Hide();
         }
         break;
-    }
     case WM_CONTEXTMENU:
         ShowMenu(position);
         break;
@@ -187,10 +182,10 @@ void App::OnTrayEvent(UINT event, POINT position) {
 void App::ShowMenu(POINT position) {
     const HMENU menu = CreatePopupMenu();
     if (!menu) return;
-    AppendMenuW(menu, MF_STRING, kOpenMeterCommand, L"Open Meter");
+    AppendMenuW(menu, MF_STRING, kToggleMeterCommand, meter_.IsVisible() ? L"Close Meter" : L"Open Meter");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kQuitCommand, L"Quit dBTray");
-    SetMenuDefaultItem(menu, kOpenMeterCommand, FALSE);
+    SetMenuDefaultItem(menu, kToggleMeterCommand, FALSE);
 
     // The menu only closes on a click elsewhere if its owner is the foreground window.
     SetForegroundWindow(window_);
@@ -200,7 +195,13 @@ void App::ShowMenu(POINT position) {
     PostMessageW(window_, WM_NULL, 0, 0);
     DestroyMenu(menu);
 
-    if (command == kOpenMeterCommand && !meter_.IsVisible()) ShowMeter();
+    if (command == kToggleMeterCommand) {
+        if (meter_.IsVisible()) {
+            meter_.Hide();
+        } else {
+            ShowMeter();
+        }
+    }
     if (command == kQuitCommand) Quit();
 }
 
@@ -258,6 +259,7 @@ LRESULT App::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam) {
         } else {
             tray_.UpdateImage();
         }
+        if (wParam == SPI_SETWORKAREA) RepositionMeter();  // the taskbar moved or changed size
         return 0;
     case WM_DWMCOLORIZATIONCOLORCHANGED:
         RefreshTheme();
@@ -265,6 +267,7 @@ LRESULT App::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam) {
     case WM_DISPLAYCHANGE:
     case WM_DPICHANGED:
         tray_.UpdateImage();
+        RepositionMeter();
         return 0;
     case WM_CLOSE:
         DestroyWindow(window_);

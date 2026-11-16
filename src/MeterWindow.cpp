@@ -42,6 +42,8 @@ constexpr float kCheckboxLabelGap = 8;
 constexpr float kCheckboxRowHeight = 22;
 constexpr float kControlHeight = 28;
 constexpr float kControlRadius = 4;
+constexpr float kCloseButtonSize = 28;
+constexpr float kCloseButtonOverhang = 8;  // into the right padding, so the glyph lines up with the content
 constexpr float kNoteHeight = 18;
 constexpr float kWarningIndent = 20;
 constexpr float kScreenMargin = 12;
@@ -72,11 +74,13 @@ const Style kWarningStyle{12, kRegular, kLeading, true};
 const Style kHeaderIconStyle{16, kRegular, kLeading, false, false, true};
 const Style kWarningIconStyle{13, kRegular, kLeading, false, false, true};
 const Style kCheckIconStyle{12, kRegular, kCenter, false, false, true};
+const Style kCloseIconStyle{10, kRegular, kCenter, false, false, true};
 
 // Segoe Fluent Icons (Segoe MDL2 Assets on Windows 10) code points.
 constexpr wchar_t kSpeakerGlyph[] = L"\xE994";
 constexpr wchar_t kWarningGlyph[] = L"\xE7BA";
 constexpr wchar_t kCheckGlyph[] = L"\xE73E";
+constexpr wchar_t kCloseGlyph[] = L"\xE8BB";
 constexpr wchar_t kInfinity[] = L"-\x221E";
 constexpr wchar_t kEllipsis[] = L"\x2026";
 
@@ -89,6 +93,7 @@ constexpr wchar_t kOpenSettingsLabel[] = L"Open Settings";
 constexpr wchar_t kDisabledNote[] = L"Turn dBTray on in Startup apps to finish.";
 constexpr wchar_t kOtherCopyNote[] = L"Launch at Login is set for another copy of dBTray.";
 
+constexpr wchar_t kCloseHelp[] = L"Close";
 constexpr wchar_t kPeakHelp[] = L"Peak since last reset. Click to reset peaks and integrated loudness.";
 constexpr wchar_t kClipHelp[] = L"Clip indicator: lights when the signal reaches 0 dBFS";
 constexpr wchar_t kLoudnessHelp[] = L"Show short-term and integrated loudness (LUFS)";
@@ -211,16 +216,21 @@ void MeterWindow::Show(const RECT* icon) {
     UpdateWindow(hwnd_);
 }
 
-void MeterWindow::HideWindow(bool deactivated) {
-    if (hiding_ || !IsVisible()) return;
-    hiding_ = true;
+void MeterWindow::Hide() {
+    if (!IsVisible()) return;
     ShowWindow(hwnd_, SW_HIDE);
-    hiding_ = false;
     hover_ = pressed_ = focus_ = Control::None;
     ReleaseGraphics();
-    app_.OnMeterHidden(deactivated);
+    app_.OnMeterHidden();
     // Hand the pages the flyout touched back to the system; a tray app should sit small.
     SetProcessWorkingSetSize(GetCurrentProcess(), SIZE_T(-1), SIZE_T(-1));
+}
+
+void MeterWindow::Reposition(const RECT* icon) {
+    if (!IsVisible()) return;
+    hasIcon_ = icon != nullptr;
+    if (icon) iconRect_ = *icon;
+    Place();
 }
 
 void MeterWindow::Update() {
@@ -274,8 +284,10 @@ void MeterWindow::Relayout() {
     float y = kPadding;
 
     layout.header = {left, y, right, y + kHeaderHeight};
+    const float closeRight = right + kCloseButtonOverhang;
+    layout.closeButton = Centered(closeRight - kCloseButtonSize, closeRight, CenterY(layout.header), kCloseButtonSize);
     layout.titleWidth = std::ceil(Measure(kTitle, kTitleStyle).width);
-    const float nameWidth = right - (left + 16 + 6 + layout.titleWidth + 12);
+    const float nameWidth = layout.closeButton.left - 4 - (left + 16 + 6 + layout.titleWidth + 12);
     layout.deviceName = TruncateMiddle(model.OutputDeviceName(), kDeviceStyle, nameWidth);
     y += kHeaderHeight;
 
@@ -465,12 +477,14 @@ void MeterWindow::RebuildTooltips() {
         add(layout_.keepMeasuring, kKeepMeasuringHelp);
     }
     add(layout_.loudnessToggle, kLoudnessHelp);
+    add(layout_.closeButton, kCloseHelp);
 }
 
 // MARK: Input
 
 MeterWindow::Control MeterWindow::HitTest(float x, float y) const {
     const Layout& l = layout_;
+    if (Contains(l.closeButton, x, y)) return Control::Close;
     if (l.showsLoudness && Contains(l.keepMeasuring, x, y)) return Control::KeepMeasuring;
     if (Contains(l.loudnessToggle, x, y)) return Control::Loudness;
     if (Contains(l.launchToggle, x, y)) return Control::LaunchAtLogin;
@@ -519,6 +533,9 @@ void MeterWindow::MoveFocus(int step) {
 void MeterWindow::Activate(Control control) {
     Settings& settings = app_.Preferences();
     switch (control) {
+    case Control::Close:
+        Hide();
+        break;
     case Control::Meters:
         app_.Model().ResetPeaks();
         Invalidate();
@@ -577,8 +594,11 @@ LRESULT MeterWindow::HandleMessage(UINT message, WPARAM wParam, LPARAM lParam) {
         if (!positioning_) Resize();
         return 0;
     case WM_ACTIVATE:
-        // Like the system's flyouts, close as soon as something else gets the focus.
-        if (LOWORD(wParam) == WA_INACTIVE) HideWindow(true);
+        // The flyout stays open when another window takes the focus; the focus ring goes.
+        if (LOWORD(wParam) == WA_INACTIVE && showsFocus_) {
+            showsFocus_ = false;
+            Invalidate();
+        }
         break;
     case WM_MOUSEMOVE: {
         const Control control = HitTest(GET_X_LPARAM(lParam) / Scale(), GET_Y_LPARAM(lParam) / Scale());
@@ -773,6 +793,7 @@ void MeterWindow::Render() {
     target_->Clear(colors.background);
 
     DrawHeader();
+    DrawCloseButton();
     if (!l.error.empty()) DrawWarning(l.errorRect, l.error);
 
     if (l.showsLoudness) DrawLoudnessRow(l.shortTermRow, L"S", model.Reading().shortTerm);
@@ -823,7 +844,8 @@ void MeterWindow::DrawHeader() {
     DrawString(kTitle, Centered(titleLeft, titleLeft + layout_.titleWidth + 4, centerY), kTitleStyle,
                colors.textPrimary);
     if (!layout_.deviceName.empty()) {
-        DrawString(layout_.deviceName, Centered(titleLeft + layout_.titleWidth + 8, header.right, centerY),
+        DrawString(layout_.deviceName,
+                   Centered(titleLeft + layout_.titleWidth + 8, layout_.closeButton.left - 4, centerY),
                    kDeviceStyle, colors.textSecondary);
     }
 }
@@ -965,6 +987,19 @@ void MeterWindow::DrawButton(const D2D1_RECT_F& rect, const wchar_t* label, Cont
                     pressed ? colors.buttonFillPressed : hovered ? colors.buttonFillHover : colors.buttonFill);
     StrokeRoundedRect(inset, kControlRadius, colors.buttonStroke, 1);
     DrawString(label, rect, kButtonStyle, pressed ? colors.textSecondary : colors.textPrimary);
+}
+
+// A borderless button like the close buttons of Windows 11 flyouts: a fill only under the mouse.
+void MeterWindow::DrawCloseButton() {
+    const Palette& colors = app_.Colors();
+    const bool hovered = hover_ == Control::Close;
+    const bool pressed = hovered && pressed_ == Control::Close;
+    if (hovered) {
+        FillRoundedRect(layout_.closeButton, kControlRadius,
+                        pressed ? colors.subtleFillPressed : colors.subtleFillHover);
+    }
+    DrawString(kCloseGlyph, layout_.closeButton, kCloseIconStyle,
+               hovered && !pressed ? colors.textPrimary : colors.textSecondary);
 }
 
 void MeterWindow::DrawFocusRing() {
